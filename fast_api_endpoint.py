@@ -14,8 +14,8 @@ def get_csv():
         "Laptop, 999, 42\n"
         "Mouse, 29, 150"
     }
-    return Response{
+    return Response(
         content=csv_content, 
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=products.csv"}
-        }
+        )
