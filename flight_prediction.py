@@ -1,11 +1,15 @@
 import pandas as pd
 import numpy as np
+from pathlib import Path
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+from sklearn import pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 from xgboost import XGBClassifier
+from Time_Series import X_test
 
 train_path = Path("train.csv")
 test_path = Path("test.csv")
@@ -50,6 +54,12 @@ def add_features(df):
 train = add_features(train)
 test = add_features(test)
 
+#Split features X and target Y first to prevent data leakage during preprocessing
+X_train = train.drop(columns=[target])
+y_train = train[target]
+X_test = test.drop(columns=[target])
+y_test = test[target]
+
 categorical_features = [
     "OP_CARRIER", "ORIGIN", "DEST", "ROUTE"
 ]
@@ -87,6 +97,29 @@ model = XGBClassifier(
     colsample_bytree = 0.8,
     random_state = 42,
     objective = "binary:logistic",
-    eval_metric = "logloss"
+    eval_metric = "logloss",
     n_jobs = -1
 )
+full_pipeline = Pipeline(steps=[
+    ("preprocessor", preprocessor),
+    ("classifier", model)
+])
+
+print("Training model...")
+full_pipeline.fit(X_train, y_train)
+
+print("Generating predictions...")
+y_pred = full_pipeline.predict(X_test)
+y_proba = full_pipeline.predict_proba(X_test)[:, 1]
+
+accuracy = accuracy_score(y_test, y_pred)
+precision = precision_score(y_test, y_pred)
+recall = recall_score(y_test, y_pred)
+f1 = f1_score(y_test, y_pred)
+roc_auc = roc_auc_score(y_test, y_proba)
+
+print(f"Accuracy:  {accuracy:.4f}")
+print(f"Precision: {precision:.4f}")
+print(f"Recall:    {recall:.4f}")
+print(f"F1 Score:  {f1:.4f}")
+print(f"ROC AUC:   {roc_auc:.4f}")
